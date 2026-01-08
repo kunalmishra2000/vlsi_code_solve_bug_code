@@ -1,0 +1,213 @@
+/*disable fork does not work here because it is a forked process that never executes before the enclosing join_any completes; join_any exits as soon as another thread finishes, ending the fork context before disable fork can run.*/
+
+module top;
+
+    initial
+    begin
+        fork
+            fork
+                $display( $time,"C" );
+            join_none
+            $display( "D" );
+            disable fork;
+        join_any
+        $display( "E" );
+    end
+
+endmodule
+          
+          
+/*
+Excellent question — this hits a **very subtle but important SystemVerilog rule**.
+You’re almost right, but one key concept is missing: ***which fork does `disable fork` refer to?***
+
+Let’s clear it step by step.
+
+---
+
+## Your code
+
+```sv
+module top;
+  initial begin
+    fork
+      fork
+        $display($time," C");
+      join_none
+
+      $display("D");
+
+      disable fork;
+    join_any
+
+    $display("E");
+  end
+endmodule
+```
+
+---
+
+## 🔑 Rule #1 — What does `disable fork` mean?
+
+> **`disable fork;` terminates the *innermost active fork…join block* in the *current process*.**
+
+⚠️ It does **NOT** mean “kill all forked threads globally”.
+
+---
+
+## 🔍 Now apply this rule to your code
+
+### OUTER fork contains **three threads**:
+
+1. Inner `fork … join_none`
+2. `$display("D")`
+3. `disable fork`
+
+These three are **parallel threads**.
+
+---
+
+## 🚨 Critical point (this is the key)
+
+`disable fork;` is itself **a forked thread**,
+and **it executes only when the scheduler runs that thread**.
+
+But:
+
+* The **inner fork** finishes immediately (`join_none`)
+* That **satisfies `join_any`**
+* The parent exits the outer fork **before `disable fork` runs**
+
+So:
+
+> **`disable fork` never gets a chance to execute**
+
+---
+
+## Timeline (simple)
+
+### Time 0 — Active region
+
+| Thread | Action                             |
+| ------ | ---------------------------------- |
+| T1     | inner fork → finishes immediately  |
+| T2     | `$display("D")` (not executed yet) |
+| T3     | `disable fork` (not executed yet)  |
+
+### `join_any` sees T1 is done
+
+➡️ parent prints `E`
+
+At this point:
+
+* Outer fork context is already gone
+* `disable fork` is irrelevant
+
+---
+
+## ❓ Why it’s NOT “because disable is a thread” (refined answer)
+
+You said:
+
+> “because it's consider as a thread here”
+
+Close — the **correct reasoning** is:
+
+> **Because `disable fork` is a *parallel thread* that did not execute before `join_any` was satisfied.**
+
+---
+
+## 🔑 Important misconception to fix
+
+❌ **Wrong assumption**
+
+> `disable fork` runs immediately when fork starts
+
+✅ **Correct**
+
+> `disable fork` runs only **when that specific forked process is scheduled**
+
+---
+
+## 💥 How to make `disable fork` work
+
+### ✅ Option 1: Use `join` (wait for all threads)
+
+```sv
+fork
+  fork
+    $display("C");
+  join_none
+
+  $display("D");
+
+  disable fork;
+join
+```
+
+Now `disable fork` executes before exit.
+
+---
+
+### ✅ Option 2: Move `disable fork` outside fork
+
+```sv
+fork
+  fork
+    $display("C");
+  join_none
+
+  $display("D");
+join_any
+
+disable fork;
+$display("E");
+```
+
+---
+
+### ✅ Option 3: Name the fork (BEST PRACTICE)
+
+```sv
+fork : OUTER
+  fork
+    $display("C");
+  join_none
+
+  $display("D");
+join_any
+
+disable OUTER;
+$display("E");
+```
+
+---
+
+## 🧠 UVM real-world warning
+
+This exact pattern causes **zombie threads** in UVM:
+
+```sv
+fork
+  start_seq();
+  watchdog();
+  disable fork; // ❌ often never runs
+join_any
+```
+
+➡️ Leads to monitors running forever
+
+---
+
+## ✅ Final one-line answer
+
+> `disable fork` does not work here because it is a forked process that never executes before the enclosing `join_any` completes; `join_any` exits as soon as another thread finishes, ending the fork context before `disable fork` can run.
+
+If you want, next I can:
+
+* Show **named fork + disable timeline**
+* Show **UVM safe pattern**
+* Show **waveform-level explanation**
+
+Just say 👍
+*/
