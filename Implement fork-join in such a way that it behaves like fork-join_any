@@ -1,0 +1,21 @@
+//Implement fork-join in such a way that it behaves like fork-join_any
+
+//logic use delay and disable key
+
+module tab;
+  
+  initial begin
+    fork :behave
+      begin
+      #1$display("a");
+      disable behave;
+      end
+      begin
+      #2$display("b");
+       disable behave;
+      end
+    join
+
+      $display("exit");
+      end
+      endmodule
