@@ -1,0 +1,67 @@
+//Both threads start at the same simulation time (t=0)
+//Each thread executes independently
+//Simulation scheduler decides which one actually runs first in the same time slot
+//run_seq(); // #50 delay
+//watchdog(); // #10 delay
+
+/*| Time | Event                                                               |
+| ---- | ------------------------------------------------------------------- |
+| 0    | Both threads start                                                  |
+| 0    | Scheduler chooses which thread executes first (doesn’t matter much) |
+| 10   | watchdog finishes → executes `disable RUN`                          |
+| 10   | disables the fork → kills run_seq                                   |
+| 10   | parent continues                                                    |
+*/
+
+
+module demo;
+  task run_seq();
+    // MAIN task – intentionally slow / stuck
+    $display("%0t : run_seq started", $time);
+    #50;   // very slow
+    $display("%0t : run_seq finished", $time);
+  endtask
+
+  task watchdog();
+    // WATCHDOG – fast timeout
+    $display("%0t : watchdog started", $time);
+    #10;   // timeout occurs first
+    $display("%0t : watchdog TIMEOUT", $time);
+  endtask
+
+  initial begin
+    fork : RUN
+      begin
+        run_seq();
+        disable RUN;
+      end
+
+      begin
+        watchdog();
+        disable RUN;
+      end
+    join
+
+    $display("%0t : EXIT fork", $time);
+  end
+endmodule
+
+/*Important points to remember
+
+Fork threads run in parallel, but exact scheduling in the same time slot is simulator-dependent.
+
+First thread to reach disable RUN kills all others — this is why the “first to finish” matters.
+
+Watchdog exists only as a safety net — it only executes first if main task hangs or is slow.
+
+Mental model
+
+Think of it like a race:
+
+Runner 1: Main work (run_seq)
+
+Runner 2: Watchdog (timeout)
+
+Both start at the same time
+
+Whoever finishes first blows the whistle → race stops*/
