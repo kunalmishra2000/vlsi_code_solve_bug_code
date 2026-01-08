@@ -1,0 +1,207 @@
+module tab;
+  int a[$]={1,2,3,4,55,66,11,8,9,0};
+   int s;
+  initial begin
+    $display(" before_poping=%0p", a);
+    //solve using store siz in variable like:-
+    s=a.size;
+ //   for(int i=0; i<a.size; i++)begin  // error thorugh
+      for(int i=0; i<s; i++)begin  // solve error  using this loop
+
+      $display(" poping in queue=%0p", a.pop_back());
+    end
+    $display("after poping=%0p", a);
+  end
+endmodule
+/*
+
+| Iteration | i | a.size | Condition `i < a.size` | Popped value | New size |
+| --------- | - | ------ | ---------------------- | ------------ | -------- |
+| 1         | 0 | 10     | 0 < 10 ✅               | 0            | 9        |
+| 2         | 1 | 9      | 1 < 9 ✅                | 9            | 8        |
+| 3         | 2 | 8      | 2 < 8 ✅                | 8            | 7        |
+| 4         | 3 | 7      | 3 < 7 ✅                | 11           | 6        |
+| 5         | 4 | 6      | 4 < 6 ✅                | 66           | 5        |
+| 6         | 5 | 5      | 5 < 5 ❌                | STOP         | —        |
+
+//op exits after 5 pops
+
+//That’s why only 5 values are popped, not 10.
+
+// explain detail
+
+Yes — you’re **very close**, just one concept needs to be crystal clear 👍
+Let me explain it **slowly, logically, and with a mental model**.
+
+---
+
+## Short Answer (Core Reason)
+
+👉 **Execution stops because the loop condition becomes FALSE**,
+not because `i` stops incrementing.
+
+This condition is checked **every iteration**:
+
+```systemverilog
+i < a.size()
+```
+
+When the queue shrinks, `a.size()` becomes **equal to `i`**, so the condition fails and the loop exits.
+
+---
+
+## What you think is happening (almost correct)
+
+You are thinking:
+
+> “`i` keeps increasing (0,1,2,3…), and queue size is reducing, but why does it stop?”
+
+Correct:
+
+* `i` **does keep increasing**
+* queue size **keeps reducing**
+
+❗ **The loop stops when both become equal**
+
+---
+
+## Let’s visualize the exact stop point
+
+Initial:
+
+```
+i = 0
+a.size = 10
+```
+
+### Iteration-by-iteration
+
+| Iter | i | a.size BEFORE check | Condition `i < a.size` |
+| ---- | - | ------------------- | ---------------------- |
+| 1    | 0 | 10                  | 0 < 10 ✅               |
+| 2    | 1 | 9                   | 1 < 9  ✅               |
+| 3    | 2 | 8                   | 2 < 8  ✅               |
+| 4    | 3 | 7                   | 3 < 7  ✅               |
+| 5    | 4 | 6                   | 4 < 6  ✅               |
+| 6    | 5 | 5                   | 5 < 5  ❌ **STOP**      |
+
+### 🚨 This is the key line:
+
+```
+i == a.size   →   loop exits
+```
+
+---
+
+## Why equality stops the loop?
+
+Your loop condition is **strictly less than**:
+
+```systemverilog
+i < a.size
+```
+
+When:
+
+```
+i == a.size
+```
+
+Then:
+
+```
+FALSE → loop terminates
+```
+
+This is **standard for-loops behavior**, not queue-specific.
+
+---
+
+## Important mental model (remember this)
+
+### 🔁 For-loop has THREE steps every iteration:
+
+```systemverilog
+for ( init ; CONDITION ; increment )
+```
+
+Execution order:
+
+1. Check CONDITION
+2. Execute body
+3. Increment `i`
+4. Go back to step 1
+
+❗ Since `a.size()` is re-evaluated at **step 1 every time**, the shrinking queue affects loop exit.
+
+---
+
+## Analogy (real-life example)
+
+Imagine:
+
+* `i` = number of steps you’ve taken
+* `a.size()` = number of stairs remaining
+
+You keep walking **while**:
+
+```
+steps_taken < stairs_remaining
+```
+
+If stairs disappear while walking:
+
+* Eventually: `steps_taken == stairs_remaining`
+* You STOP walking
+
+---
+
+## Correct rule (VERY IMPORTANT)
+
+> ❌ Never modify a container when using its `.size()` in a `for` condition.
+
+---
+
+## Correct patterns (memorize these)
+
+### ✅ Pattern 1: Store size once
+
+```systemverilog
+int n = a.size();
+for (int i = 0; i < n; i++)
+  a.pop_back();
+```
+
+### ✅ Pattern 2: While loop (best)
+
+```systemverilog
+while (a.size() > 0)
+  a.pop_back();
+```
+
+---
+
+## Real verification warning (UVM / PCIe)
+
+This exact bug causes:
+
+* Half packets popped
+* Scoreboard mismatches
+* Random regression failures 😬
+
+That’s why senior DV engineers **never use `for(i < queue.size())`** when popping.
+
+---
+
+### Final one-line takeaway:
+
+> **Execution stops because `i` becomes equal to the shrinking queue size, making the loop condition false.**
+
+If you want, I can show:
+
+* waveform-style timing
+* mailbox vs queue comparison
+* real scoreboard bug example
+
+Just say 👍
+*/
