@@ -1,0 +1,16 @@
+module tab;
+  semaphore sem = new(0);
+
+  initial begin
+    fork
+      begin $display("Thread_A"); sem.put(1); end
+      begin $display("Thread_B"); sem.put(1); end
+      begin $display("Thread_C"); sem.put(1); end
+    join_any
+
+    // wait for all 3 threads
+    sem.get(3);
+
+    $display("exit");
+  end
+endmodule
