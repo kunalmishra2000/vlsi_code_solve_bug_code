@@ -1,0 +1,21 @@
+// Implement fork-join_any in such a way that it behaves like fork-join_none 
+// use: DELAY to solve this
+
+module tab;
+  initial begin
+     fork :a
+       disable a;
+          begin
+          #2  $display("a");
+          end
+         begin
+          #4 $display("b");
+         end
+       
+         begin
+           // take empty thread to solve this
+         end
+       join_any
+    $display("exit");
+       end
+       endmodule 
