@@ -1,0 +1,30 @@
+Implement fork-join_any in such a way that it behaves like fork-join_none 
+
+
+
+//semaphore
+module tab;
+  semaphore sem=new(1);
+  initial begin
+    //-> done;
+     fork 
+  
+       
+          begin
+          #2  $display("a");
+          end
+         begin
+          #4 $display("b");
+         end
+       
+     begin
+       sem.get(1);
+       sem.put(1);
+
+     end
+      
+       join_any
+    
+    $display("exit");
+       end
+       endmodule 
