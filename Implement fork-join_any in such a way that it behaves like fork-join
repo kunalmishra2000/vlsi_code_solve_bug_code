@@ -1,0 +1,22 @@
+//Implement fork-join_any in such a way that it behaves like fork-join 
+// use wait fork to change the behavior of  fork join_any to fork join
+
+module tab;
+   
+  initial begin
+    fork :main
+      
+      begin:a
+        $display("thread_A");
+      end
+      begin:b
+        $display("Thread_b");
+      end
+      begin:c
+        $display("Thread_c");
+      end
+    join_any
+    wait fork;
+    $display(" exist");
+  end
+endmodule 
