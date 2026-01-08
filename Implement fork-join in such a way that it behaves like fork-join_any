@@ -35,3 +35,161 @@ fork : RUN
   end
 join
 //his pattern runs multiple tasks in parallel and terminates all remaining tasks as soon as the first one completes, effectively emulating fork…join_any while preventing leftover threads.
+No problem 👍 — let’s reset and explain it **very simply**, with **one clear example** and **no jargon**.
+
+---
+
+## Think of it like this (real-life example)
+
+### Situation
+
+You order food online 🍕
+
+You do **two things at the same time**:
+
+1. **Wait for food to arrive**
+2. **Set an alarm for 30 minutes**
+
+Whichever happens first decides what you do next.
+
+---
+
+## Now map this to the code
+
+```sv
+fork : RUN
+  begin
+    run_seq();
+    disable RUN;
+  end
+
+  begin
+    watchdog();
+    disable RUN;
+  end
+join
+```
+
+### Thread-1 → `run_seq()`
+
+👉 *Waiting for food*
+
+* Does the main work
+* If it finishes → everything is OK
+* It stops the alarm
+
+### Thread-2 → `watchdog()`
+
+👉 *Alarm clock*
+
+* Waits for timeout
+* If food doesn’t arrive in time → alarm rings
+* It stops the main work and reports error
+
+---
+
+## What really happens in simulation
+
+### Case 1️⃣ Normal (no bug)
+
+```sv
+run_seq();   // finishes fast
+watchdog();  // waiting
+```
+
+Output:
+
+```
+(run_seq finished)
+watchdog stopped
+test continues
+```
+
+👉 **Second thread never “wins”** — and that is GOOD
+
+---
+
+### Case 2️⃣ Bug / Hang
+
+```sv
+run_seq();   // stuck forever
+watchdog();  // timeout after 100
+```
+
+Output:
+
+```
+TIMEOUT!
+run_seq killed
+test stops
+```
+
+👉 **Second thread saves you from infinite simulation**
+
+---
+
+## Answer to your confusion
+
+> ❓ “Always first thread execute — why second thread?”
+
+### ✅ Simple answer:
+
+* First thread **does not always finish first**
+* It only finishes first **when things are correct**
+* Second thread is there **only for failure cases**
+
+---
+
+## One sentence to remember
+
+> **Second thread is a safety net, not a normal path.**
+
+---
+
+## Tiny example (numbers)
+
+```sv
+fork : RUN
+  begin
+    #10 $display("main done");
+    disable RUN;
+  end
+
+  begin
+    #100 $display("timeout");
+    disable RUN;
+  end
+join
+```
+
+Output:
+
+```
+main done
+```
+
+Change main to `#200`:
+
+Output:
+
+```
+timeout
+```
+
+---
+
+## Final takeaway (very important)
+
+* Both threads start together
+* Whoever finishes first stops the other
+* You need the second thread to avoid hangs
+
+---
+
+If you want, next I can:
+
+* Draw a **timeline picture**
+* Show a **waveform**
+* Rewrite with **even simpler code**
+
+Just tell me 👍
