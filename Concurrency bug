@@ -1,0 +1,202 @@
+//defination:- Concurrency bug = more than one thing happens at the same time, and the result depends on timing instead of logic.
+
+## 1️⃣ Concurrency bug — SUPER SIMPLE REAL-LIFE EXAMPLE
+
+### 🧃 Juice bottle example
+
+* One juice bottle has **1 glass left**
+* Two people check **at the same time**
+
+```
+Person A sees: juice available
+Person B sees: juice available
+```
+
+Both drink → bottle becomes **negative** 😵
+
+❌ Wrong result because **both acted at the same time**
+
+➡️ This is a **concurrency bug**
+
+---
+
+## 2️⃣ SystemVerilog example (VERY SIMPLE)
+
+### Example 1: Two threads write same variable
+
+```systemverilog
+module test;
+  int x;
+
+  initial begin
+    fork
+      x = 5;
+      x = 10;
+    join
+
+    $display("x = %0d", x);
+  end
+endmodule
+```
+
+### What is `x`?
+
+* 5 ❓
+* 10 ❓
+
+➡️ **Unpredictable**
+Depends on which thread writes last.
+
+💥 **Concurrency bug**
+
+---
+
+## 3️⃣ Example 2: Read & write at same time
+
+```systemverilog
+module test;
+  int count = 0;
+
+  initial begin
+    fork
+      count = count + 1;
+      count = count + 1;
+    join
+
+    $display("count = %0d", count);
+  end
+endmodule
+```
+
+### Expected
+
+```
+count = 2
+```
+
+### Possible actual result
+
+```
+count = 1
+```
+
+Why?
+
+* Both threads read `count = 0`
+* Both write back `1`
+
+💥 **Concurrency bug**
+
+---
+
+## 4️⃣ Example 3: Your fork + loop example (simplified)
+
+```systemverilog
+for (int i=0; i<2; i++) begin
+  fork
+    $display("i=%0d", i);
+  join_none
+end
+```
+
+### What you think
+
+```
+i=0
+i=1
+```
+
+### What actually happens
+
+```
+i=2
+i=2
+```
+
+Why?
+
+* Fork threads run later
+* Loop already finished
+* `i` changed
+
+💥 **Concurrency bug**
+
+---
+
+## 5️⃣ Example 4: Timeout vs response (REAL PROJECT)
+
+```systemverilog
+fork
+  begin
+    #100;
+    $display("TIMEOUT");
+  end
+
+  begin
+    #90;
+    $display("RESPONSE");
+  end
+join_any
+```
+
+### Output
+
+```
+RESPONSE
+TIMEOUT   ❌
+```
+
+Why?
+
+* `join_any` returns after RESPONSE
+* TIMEOUT thread still runs
+
+### FIX
+
+```systemverilog
+join_any
+disable fork;
+```
+
+💥 Without disable → **concurrency bug**
+
+---
+
+## 6️⃣ Why these bugs are hard 😖
+
+* No compile error
+* Sometimes correct
+* Sometimes wrong
+* Depends on timing
+
+That’s why engineers hate them 😄
+
+---
+
+## 7️⃣ How to avoid concurrency bugs (easy rules)
+
+✅ Don’t share variables between threads
+✅ Capture loop variables
+✅ Use `join` when possible
+✅ Use `semaphore / mutex`
+✅ Kill extra threads (`disable fork`)
+
+---
+
+## 8️⃣ One-line understanding (important)
+
+> **Concurrency bug = more than one thing happens at the same time, and the result depends on timing instead of logic.**
+
+---
+
+If you want next, I can:
+
+* draw timing diagrams
+* show how semaphore fixes example #2
+* explain deadlock vs race
+* give PCIe / UVM real regression bug
+
+Just tell me 👍
+
+
+Concurrency bug = more than one thing happens at the same time, and the result depends on timing instead of logic.
