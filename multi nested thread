@@ -1,0 +1,22 @@
+module top;
+
+    initial
+    begin
+        fork
+            fork
+                begin
+                    $display( $time, "0" );
+                end
+                begin
+                    $display( $time, "1" );
+                    fork
+                        $display( $time, "2" );
+                    join_none
+                    $display( $time, "3" );
+                end
+            join_any
+            $display( $time, "4" );
+        join_any
+    end
+
+endmodule
