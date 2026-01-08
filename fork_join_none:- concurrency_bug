@@ -1,25 +1,23 @@
 
 //SOLUTION 2
-//Use automatic variable inside fork
- automatic int ai = i;
-// ✅ SOLUTION 3
-//Use fork...join (if waiting is allowed)
-
+ here, we solve issue
 module tab;
+int l;
+  task  print_l(int l);  //  also this method work
+    $display("[INSIDE_FORK] l=%0d", l);
+endtask
 
   initial begin
     for( int i=0; i<3; i++)begin
-      $display("[uper] i=%0d", i);
-  // solve using one local variable
-  //Why it works
-// Each forked thread gets its own copy
-//No shared variable → no race
-       int local_var;
-       local_var=i;  // solve problem
+      //l=i;
       fork
-      // automatic int local_var = i;  // other method to solve this error
-        $display("[INSIDE_FORK] i=%0d", local_var);
+          begin   
+   
+
+      print_l(i);
+          end
       join_none
+      wait fork;  // this soultion
       $display("[lower] i=%0d", i);
 
     end
@@ -27,6 +25,11 @@ module tab;
   end
 endmodule 
 
+// ✅ SOLUTION 3
+//Use fork...join (if waiting is allowed)
+
+// ✅ SOLUTION 4
+//Use wait frok to solve (if waiting is allowed)
 
 Yes 👍 **inside this loop there *is* a concurrency bug**.
 Let me explain **very clearly, step-by-step**, using *your exact code*.
