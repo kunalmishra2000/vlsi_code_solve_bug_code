@@ -1,0 +1,21 @@
+/*Why ARR[0] is NOT null
+
+Because the allocation thread completed before the display, even though execution order is not guaranteed.
+
+This is a race condition, not a language guarantee.*/
+
+
+module top;
+
+    initial
+    begin
+        int ARR[];
+
+        fork
+            ARR[0] = 1;
+            ARR = new[10];
+        join_any
+        $display( "ARR[0] : %0d", ARR[0] );
+    end
+
+endmodule
