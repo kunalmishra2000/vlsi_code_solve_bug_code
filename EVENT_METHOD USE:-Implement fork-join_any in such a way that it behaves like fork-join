@@ -1,0 +1,178 @@
+
+//Implement fork-join_any in such a way that it behaves like fork-join 
+//Event-based synchronization 
+
+
+module tab;
+  event done;
+  int count = 0;
+
+  task automatic mark_done();
+  count++;
+    if(count==3)
+      -> done;
+  endtask
+
+  initial begin
+
+    fork
+      begin 
+        $display("Thread_A"); 
+        mark_done(); 
+      end
+      begin 
+     #1   $display("Thread_B"); 
+       mark_done(); 
+      end
+      begin 
+     #2  $display("Thread_C");
+        mark_done();
+      end
+    join_any
+
+    // wait until all threads report completion
+               @done; // also we wait 
+    // this wait will  stop exit thread until event is not triggered
+
+    $display("exit");
+
+  end
+endmodule
+
+/*
+Yes 👍 — **what you just said is CORRECT**, and now you’re describing it in the **right way**.
+Let me restate it cleanly and then tighten the understanding so there’s no confusion left.
+
+---
+
+## Your Statement (Correct, refined)
+
+> **All threads call the task → each increments the counter → when the last thread increments it, the event is triggered.**
+
+✔️ **Exactly right.**
+
+---
+
+## Important Clarification
+
+What matters is **not that the task exists**, but that:
+
+1. **Every forked thread calls the same completion logic**
+2. **A shared counter records how many threads finished**
+3. **The parent waits for a single event that represents “all done”**
+
+The task is simply the **place where this logic lives**.
+
+---
+
+## Let’s Describe the Flow in One Clean Pass
+
+### 1️⃣ Fork creates parallel threads
+
+```
+Thread_A
+Thread_B
+Thread_C
+```
+
+---
+
+### 2️⃣ Each thread does:
+
+```systemverilog
+mark_done();
+```
+
+Which means:
+
+```systemverilog
+count = count + 1;
+if (count == 3) -> done;
+```
+
+* Thread-1 → `count = 1`
+* Thread-2 → `count = 2`
+* Thread-3 → `count = 3` → **event triggered**
+
+🟢 **Only the LAST finishing thread triggers the event**
+
+---
+
+### 3️⃣ Parent behavior
+
+```systemverilog
+join_any
+@done;
+```
+
+* `join_any` lets parent continue early
+* `@done` blocks parent until **last thread signals**
+
+➡ Net result: **parent resumes only after all threads finished**
+
+---
+
+## Key Insight (This is the “aha” moment)
+
+> **The task does NOT wait for all threads.
+> The task only reports completion.
+> The parent waits.**
+
+---
+
+## Why this is valid fork–join emulation
+
+| Property                    | fork–join | Your design     |
+| --------------------------- | --------- | --------------- |
+| Parallel threads            | ✅         | ✅               |
+| All threads must finish     | ✅         | ✅ (via counter) |
+| Parent blocks               | ✅         | ✅ (`@done`)     |
+| Last thread releases parent | ✅         | ✅               |
+
+---
+
+## One Very Important Warning ⚠️ (Senior-Level)
+
+Your current code has a **potential race condition**:
+
+```systemverilog
+count++;
+if (count == 3)
+```
+
+If threads execute in the **same time slot**, `count` updates may collide.
+
+### Safe version (recommended):
+
+```systemverilog
+semaphore sem = new(1);
+
+task automatic mark_done();
+  sem.get(1);
+  count++;
+  if (count == 3)
+    -> done;
+  sem.put(1);
+endtask
+```
+
+Interviewers LOVE when you mention this.
+
+---
+
+## Perfect One-Line Interview Answer ⭐
+
+> **Each thread reports its completion by incrementing a shared counter; when the final thread reports, it triggers an event that releases the parent, effectively emulating fork–join behavior.**
+
+---
+
+You’re thinking correctly now 👍
+If you want next, I can:
+
+* Show waveform timing
+* Show why `function` won’t work here
+* Convert this to UVM objections
+* Generalize to N threads dynamically
+
+Just say 👍
+*/
