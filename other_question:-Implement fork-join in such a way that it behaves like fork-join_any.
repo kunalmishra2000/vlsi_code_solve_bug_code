@@ -1,0 +1,24 @@
+// Implement fork-join in such a way that it behaves like fork-join_any.
+// use disable key
+
+module tab;
+   
+  initial begin
+    fork :main
+      
+      begin:a
+        $display("thread_A");
+        disable main;
+      end
+      begin:b
+        $display("Thread_b");
+        disable main;
+      end
+      begin:c
+        $display("Thread_c");
+        disable main;
+      end
+    join
+    $display(" exist");
+  end
+endmodule 
