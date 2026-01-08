@@ -1,21 +1,36 @@
+//SOLUTION 1
+// here, we solve issue
+module tab;
+
+  initial begin
+    for( int i=0; i<3; i++)begin
+       automatic int l;  // it's work 
+      l=i;
+      $display("[UPPER] i=%0d", i);
+
+      fork
+          begin   
+        $display("[INSIDE_FORK] l=%0d", l);
+
+          end
+      join_none
+  
+      $display("[lower] i=%0d", i);
+
+    end
+    $display("HW");
+  end
+endmodule 
 
 //SOLUTION 2
  here, we solve issue
 module tab;
-int l;
-  task  print_l(int l);  //  also this method work
-    $display("[INSIDE_FORK] l=%0d", l);
-endtask
 
   initial begin
     for( int i=0; i<3; i++)begin
-      //l=i;
-      fork
-          begin   
-   
-
-      print_l(i);
-          end
+  
+      fork  
+ $display("[INSIDE_FORK] l=%0d", l);
       join_none
       wait fork;  // this soultion
       $display("[lower] i=%0d", i);
