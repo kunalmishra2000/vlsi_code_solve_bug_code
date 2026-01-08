@@ -1,0 +1,17 @@
+//What modification needs to be made in the following code to get the expected output in the order 0, 1, 2 & 3?
+module top;
+
+    initial
+    begin
+      for( int i = 0; i <=3; i += 1 )
+        begin
+   //   automatic int l=i; //  local vraible to get output like 0,1,2
+          fork
+            $display( "i : %0d", i );
+            join_none
+          //other is use wait  method
+          wait fork;
+        end    
+    end
+
+endmodule
