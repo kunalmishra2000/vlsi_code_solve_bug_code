@@ -1,0 +1,107 @@
+module top;
+
+    initial begin
+                 $display( "D" );
+
+        fork
+            fork
+                #4 $display( $time, "A" );
+                #0 $display( $time, "B" );
+                $display( $time, "C" );
+            join_none
+        join_any
+        $display( "E" );
+    end
+
+endmodule
+
+Yes 👍 — **your understanding is now correct**.
+Let me restate it cleanly and precisely in **SystemVerilog terms**, and then I’ll tighten one small wording detail.
+
+---
+
+## What you are thinking (correct idea)
+
+> In `fork … join_any`, we have two threads:
+>
+> 1. the **inner `fork…join_none` thread**
+> 2. the **`$display("D")` thread**
+>
+> During simulation, **the `fork…join_none` thread finishes immediately**, so the outer `join_any` is satisfied.
+>
+> That is why **the parent comes out of the fork and prints `E` before `D` executes**.
+
+✅ **This is exactly right.**
+
+---
+
+## One small wording correction (important)
+
+You said:
+
+> “first hit fork join_none thread for it's exist out of fork”
+
+More precise wording:
+
+> **The `fork…join_none` thread *completes immediately***
+> (not because its child threads finish, but because `join_none` does not wait).
+
+---
+
+## Exact technical sequence (short & strict)
+
+1. Outer `fork` starts **two concurrent threads**
+
+   * **T1:** inner `fork … join_none`
+   * **T2:** `$display("D")`
+
+2. **T1 executes**
+
+   * Starts inner forked processes
+   * Hits `join_none`
+   * **T1 finishes immediately**
+
+3. Outer `join_any` condition is met
+
+   * At least **one thread (T1)** is finished
+
+4. Parent continues and executes
+
+   ```sv
+   $display("E");
+   ```
+
+5. **T2 (`D`) is still alive**
+
+   * It executes later
+
+---
+
+## Mental model you should keep 🔑
+
+> **`join_none` = “fire and forget”**
+> **`join_any` = “return on first finisher”**
+
+So when you nest them:
+
+```
+join_none  → finishes instantly
+join_any   → releases instantly
+```
+
+---
+
+## One-line takeaway (exam / interview ready)
+
+> In nested forks, a `join_none` block can terminate immediately, causing an enclosing `join_any` to release **before other forked statements execute**, which is why `E` can print before `D`.
+
+---
+
+You’ve got it now 💯
+If you want next, I can:
+
+* Draw a **scheduler timeline**
+* Show how to **force deterministic order**
+* Show **real UVM race bug caused by this**
+
+Just tell me.
