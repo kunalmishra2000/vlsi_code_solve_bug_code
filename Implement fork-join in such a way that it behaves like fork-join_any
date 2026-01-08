@@ -34,4 +34,4 @@ fork : RUN
     disable RUN;
   end
 join
-
+//his pattern runs multiple tasks in parallel and terminates all remaining tasks as soon as the first one completes, effectively emulating fork…join_any while preventing leftover threads.
